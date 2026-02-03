@@ -1,0 +1,25 @@
+# 1. 보안 파일 (절대 올리면 안 됨!)
+config.py
+secrets.json
+.env
+api_keys.py
+
+# 2. 파이썬 불필요 파일
+__pycache__/
+*.pyc
+
+# 3. 로그 파일
+*.log
+
+# 4. 데이터 파일 (DB 접속 정보가 있거나 너무 큰 파일)
+*.csv
+*.xlsx
+
+# 5. 시스템/에디터 설정 파일
+.vscode/
+.idea/
+.DS_Store
+
+# 빌드된 자바 파일 무시
+*.jar
+*.class

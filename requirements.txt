@@ -1,0 +1,14 @@
+streamlit
+pandas
+numpy
+sqlalchemy
+pymysql
+requests
+beautifulsoup4
+openai
+plotly
+xgboost
+lightgbm
+catboost
+neuralprophet
+python-dotenv

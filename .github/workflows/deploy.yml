@@ -1,0 +1,35 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: SSH Remote Commands
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_KEY }}
+          port: 22
+          script: |
+            # 1. 프로젝트 폴더로 이동 (폴더명 확인 필수!)
+            cd prophet-asset-forecast
+            
+            # 2. 깃허브에서 최신 코드 당겨오기
+            git pull origin main
+            
+            # 3. Docker 컨테이너 새로고침 (새 코드로 다시 빌드)
+            # (만약 Docker가 안 켜져 있으면 켜고, 켜져 있으면 재시작)
+            sudo docker-compose up -d --build
+            
+            # 4. 불필요한 이미지 청소 (용량 관리)
+            sudo docker image prune -f
