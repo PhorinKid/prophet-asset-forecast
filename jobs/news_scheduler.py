@@ -8,6 +8,7 @@ import time
 import json
 from datetime import datetime
 import config
+from apscheduler.schedulers.blocking import BlockingScheduler
 
 # ==============================================================================
 # [1] 설정
@@ -226,4 +227,13 @@ def run_scheduler():
         print("스케줄러 종료")
 
 if __name__ == "__main__":
-    run_scheduler()
+    scheduler = BlockingScheduler(timezone='Asia/Seoul')
+    
+    # 매주 수요일(wed) 10시 01분에 실행하도록 설정
+    scheduler.add_job(run_scheduler, 'cron', day_of_week='wed', hour=10, minute=1)
+    
+    print("⏰ 파이썬 스케줄러 대기 중... (매주 수요일 10:01)")
+    try:
+        scheduler.start()
+    except (KeyboardInterrupt, SystemExit):
+        pass

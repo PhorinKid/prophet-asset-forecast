@@ -12,3 +12,4 @@ lightgbm
 catboost
 neuralprophet
 python-dotenv
+apscheduler
