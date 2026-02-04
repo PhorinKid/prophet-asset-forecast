@@ -2,7 +2,7 @@
 
 # 1. 스케줄러를 '백그라운드(&)'로 몰래 실행
 echo "🕒 공지사항 스케줄러를 백그라운드에서 시작합니다..."
-python jobs/news_scheduler.py &
+python -u jobs/news_scheduler.py &
 
 # 2. 메인 웹 서버(Streamlit)를 실행 (이게 꺼지면 컨테이너도 꺼짐)
 echo "🚀 Streamlit 웹 서버를 시작합니다..."
