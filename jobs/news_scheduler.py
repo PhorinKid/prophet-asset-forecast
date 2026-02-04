@@ -7,44 +7,30 @@ import openai
 import time
 import json
 from datetime import datetime
-import config
 from apscheduler.schedulers.blocking import BlockingScheduler
 import os
 import sys
+from dotenv import load_dotenv
 
-try:
-    # 1. 로컬 환경: config.py가 같은 폴더에 있다면 불러옵니다.
-    import config
-    print("✅ 로컬 설정 파일(config.py)을 발견하고 로드했습니다.")
-    
-    DB_CONFIG = config.DB_CONFIG
-    LOSTARK_API_TOKEN = config.LOSTARK_API_TOKEN
-    OPENAI_API_KEY = config.OPENAI_API_KEY
-    TARGET_CATEGORIES = config.TARGET_CATEGORIES
+# ==============================================================================
+# [1] 설정 로드
+# ==============================================================================
 
-except ImportError:
-    # 2. 도커/EC2 환경: config.py가 없으므로 환경변수에서 직접 만듭니다.
-    print("⚠️ config.py가 없습니다. 시스템 환경변수를 직접 사용합니다.")
-    
-    # .env 파일에서 읽어온 값들을 사용
-    DB_CONFIG = {
-        "host": os.getenv("DB_HOST"),
-        "port": int(os.getenv("DB_PORT", 3306)), # 없으면 기본값 3306
-        "user": os.getenv("DB_USER", "admin"),   # config.py에 있던 하드코딩 값 반영
-        "password": os.getenv("DB_PASSWORD"),
-        "db": os.getenv("DB_NAME", "projectl")   # config.py에 있던 하드코딩 값 반영
-    }
-    
-    LOSTARK_API_TOKEN = os.getenv("LOSTARK_API_TOKEN")
-    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-    
-    # 카테고리는 보통 콤마(,)로 구분된 문자열로 관리하거나 기본값 사용
-    # 도커 실행 시 TARGET_CATEGORIES 환경변수가 없으면 기본값([50000, 60000, 40000]) 사용
-    cats_env = os.getenv("TARGET_CATEGORIES")
-    if cats_env:
-        TARGET_CATEGORIES = [int(x.strip()) for x in cats_env.split(',')]
-    else:
-        TARGET_CATEGORIES = [50000, 60000, 40000] # 포린님 config 파일의 기본값
+load_dotenv()
+
+print("✅ 환경변수 설정을 로드합니다.")
+
+DB_CONFIG = {
+    "host": os.getenv("DB_HOST"),
+    "port": int(os.getenv("DB_PORT", 3306)),
+    "user": os.getenv("DB_USER", "admin"),
+    "password": os.getenv("DB_PASSWORD"),
+    "db": os.getenv("DB_NAME", "projectl")
+}
+
+LOSTARK_API_TOKEN = os.getenv("LOSTARK_API_TOKEN")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+TARGET_CATEGORIES = [50000, 60000, 40000]
 
 # ==============================================================================
 # [2] 초기화
@@ -253,24 +239,17 @@ def run_scheduler():
         print("스케줄러 종료")
 
 if __name__ == "__main__":
-    # 타임존 설정 (아주 잘하셨습니다!)
     scheduler = BlockingScheduler(timezone='Asia/Seoul')
-    
-    # 스케줄 등록: 매주 수요일 10시 01분
     scheduler.add_job(run_scheduler, 'cron', day_of_week='wed', hour=10, minute=1)
     
     print("⏰ 파이썬 스케줄러 설정 완료 (매주 수요일 10:01)")
-
-    # ---------------------------------------------------------
-    # [추가] 배포 직후 잘 돌아가는지 '지금 당장' 한 번 실행해보기
-    # ---------------------------------------------------------
     print("🚀 [Self-Test] 서버 시작 직후 최초 1회 실행 중...")
+    
     try:
-        run_scheduler() # 여기서 에러 나면 바로 알 수 있음!
+        run_scheduler()
     except Exception as e:
         print(f"❌ 초기 실행 실패: {e}")
 
-    # 스케줄러 시작 (Blocking)
     print("✅ 초기 실행 완료. 스케줄러 대기 모드 진입...")
     try:
         scheduler.start()

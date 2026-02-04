@@ -8,7 +8,7 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     steps:
-      - name: 코드 체크아웃 (Github에서 코드 가져오기)
+      - name: 코드 체크아웃
         uses: actions/checkout@v4
 
       - name: Docker Hub 로그인
@@ -34,23 +34,32 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu
           key: ${{ secrets.EC2_KEY }}
+          port: 22
           script: |
-            # (1) 기존에 돌고 있던 컨테이너 멈추고 삭제 (없으면 에러 무시)
-            sudo docker stop lostark-app || true
-            sudo docker rm lostark-app || true
+            # 1. 기존 파이썬 컨테이너 정리
+            sudo docker stop lostark-web || true
+            sudo docker rm lostark-web || true
             
-            # (2) 쓸데없는 구버전 이미지 청소
-            sudo docker image prune -f
+            # 2. 강력한 대청소 (용량 확보)
+            sudo docker system prune -a -f
             
-            # (3) 방금 올라온 따끈따끈한 새 이미지 받기
+            # 3. 최신 이미지 다운로드
             sudo docker pull ${{ secrets.DOCKERHUB_USERNAME }}/prophet-asset-forecast:latest
             
-            # (4) [핵심] 새 컨테이너 실행 (환경 변수로 비밀번호 주입!)
+            # 4. .env 파일 생성 (시크릿의 모든 변수 주입)
+            echo "DB_HOST=${{ secrets.DB_HOST }}" > .env
+            echo "DB_PORT=${{ secrets.DB_PORT }}" >> .env
+            echo "DB_USER=${{ secrets.DB_USER }}" >> .env
+            echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
+            echo "DB_NAME=${{ secrets.DB_NAME }}" >> .env
+            echo "LOSTARK_API_TOKEN=${{ secrets.LOSTARK_API_TOKEN }}" >> .env
+            echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> .env
+            echo "TARGET_CATEGORIES=${{ secrets.TARGET_CATEGORIES }}" >> .env
+            
+            # 5. 실행 (환경변수 파일 사용)
             sudo docker run -d \
-              --name lostark-app \
+              --name lostark-web \
               -p 8501:8501 \
-              -e DB_HOST=${{ secrets.DB_HOST }} \
-              -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
-              -e LOSTARK_API_TOKEN=${{ secrets.LOSTARK_API_TOKEN }} \
-              -e OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} \
+              --env-file .env \
               ${{ secrets.DOCKERHUB_USERNAME }}/prophet-asset-forecast:latest
+              

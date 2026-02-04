@@ -1,9 +1,22 @@
 from sqlalchemy import create_engine, text
 import pymysql
-import config
+import os
+from dotenv import load_dotenv
 
-# DB 설정
-db_url = f"mysql+pymysql://{config.DB_CONFIG['user']}:{config.DB_CONFIG['password']}@{config.DB_CONFIG['host']}:{config.DB_CONFIG['port']}/{config.DB_CONFIG['db']}"
+# 1. 환경변수 로드 (로컬: .env 읽음 / EC2: 시스템 환경변수 읽음)
+load_dotenv()
+
+# 2. DB 접속 정보 설정 (config.py 없이 직접 구성)
+DB_CONFIG = {
+    "host": os.getenv("DB_HOST"),
+    "port": int(os.getenv("DB_PORT", 3306)),
+    "user": os.getenv("DB_USER", "admin"),
+    "password": os.getenv("DB_PASSWORD"),
+    "db": os.getenv("DB_NAME", "projectl")
+}
+
+# 3. DB 엔진 생성
+db_url = f"mysql+pymysql://{DB_CONFIG['user']}:{DB_CONFIG['password']}@{DB_CONFIG['host']}:{DB_CONFIG['port']}/{DB_CONFIG['db']}"
 engine = create_engine(db_url)
 
 def clean_dead_items(days=3):
@@ -56,3 +69,4 @@ def clean_dead_items(days=3):
 if __name__ == "__main__":
     # 3일 이상 업데이트 안 된 아이템 삭제
     clean_dead_items(3)
+    

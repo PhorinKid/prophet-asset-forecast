@@ -7,43 +7,29 @@ import openai
 import time
 import json
 from datetime import date
-import config
 import os
 import sys
+from dotenv import load_dotenv
 
-try:
-    # 1. 로컬 환경: config.py가 같은 폴더에 있다면 불러옵니다.
-    import config
-    print("✅ 로컬 설정 파일(config.py)을 발견하고 로드했습니다.")
-    
-    DB_CONFIG = config.DB_CONFIG
-    LOSTARK_API_TOKEN = config.LOSTARK_API_TOKEN
-    OPENAI_API_KEY = config.OPENAI_API_KEY
-    TARGET_CATEGORIES = config.TARGET_CATEGORIES
+# ==============================================================================
+# [1] 설정 로드 (Unified Config)
+# ==============================================================================
 
-except ImportError:
-    # 2. 도커/EC2 환경: config.py가 없으므로 환경변수에서 직접 만듭니다.
-    print("⚠️ config.py가 없습니다. 시스템 환경변수를 직접 사용합니다.")
-    
-    # .env 파일에서 읽어온 값들을 사용
-    DB_CONFIG = {
-        "host": os.getenv("DB_HOST"),
-        "port": int(os.getenv("DB_PORT", 3306)), # 없으면 기본값 3306
-        "user": os.getenv("DB_USER", "admin"),   # config.py에 있던 하드코딩 값 반영
-        "password": os.getenv("DB_PASSWORD"),
-        "db": os.getenv("DB_NAME", "projectl")   # config.py에 있던 하드코딩 값 반영
-    }
-    
-    LOSTARK_API_TOKEN = os.getenv("LOSTARK_API_TOKEN")
-    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-    
-    # 카테고리는 보통 콤마(,)로 구분된 문자열로 관리하거나 기본값 사용
-    # 도커 실행 시 TARGET_CATEGORIES 환경변수가 없으면 기본값([50000, 60000, 40000]) 사용
-    cats_env = os.getenv("TARGET_CATEGORIES")
-    if cats_env:
-        TARGET_CATEGORIES = [int(x.strip()) for x in cats_env.split(',')]
-    else:
-        TARGET_CATEGORIES = [50000, 60000, 40000] # 포린님 config 파일의 기본값
+load_dotenv()
+
+print("✅ 환경변수 설정을 로드합니다.")
+
+DB_CONFIG = {
+    "host": os.getenv("DB_HOST"),
+    "port": int(os.getenv("DB_PORT", 3306)),
+    "user": os.getenv("DB_USER", "admin"),
+    "password": os.getenv("DB_PASSWORD"),
+    "db": os.getenv("DB_NAME", "projectl")
+}
+
+LOSTARK_API_TOKEN = os.getenv("LOSTARK_API_TOKEN")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+TARGET_CATEGORIES = [50000, 60000, 40000]
 
 # 12월 17일부터 수집
 TARGET_START_DATE = date(2025, 12, 17)
