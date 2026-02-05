@@ -13,3 +13,5 @@ catboost
 neuralprophet
 python-dotenv
 apscheduler
+joblib
+scikit-learn
