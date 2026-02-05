@@ -1,0 +1,27 @@
+# 1. 연구용 노트북 파일 제외 (서버에선 실행 안 하니까)
+notebooks/
+**/*.ipynb
+
+# 2. 깃 관련 파일 제외
+.git/
+.github/
+.gitignore
+
+# 3. 환경설정 파일 제외 (보안)
+.env
+venv/
+__pycache__/
+
+# 4. 기타 쓸데없는 것들
+README.md
+Dockerfiles
+docker-compose.yml
+catboost_info/
+lightning_logs/
+*.pkl
+.env
+.git
+.github
+*.csv
+.vscode
+data/

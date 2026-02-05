@@ -23,3 +23,8 @@ __pycache__/
 # 빌드된 자바 파일 무시
 *.jar
 *.class
+
+catboost_info/
+lightning_logs/
+*.pkl
+models/
