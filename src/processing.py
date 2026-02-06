@@ -35,6 +35,15 @@ def preprocess_data(df_prices, df_notices):
         df['logged_at'] = pd.to_datetime(df['logged_at'])
         df.set_index('logged_at', inplace=True)
     
+    # [추가] 만약 외부에서 'price'라는 이름으로 바꿔서 보냈다면 다시 'current_min_price'로 인식하게 함
+    if 'price' in df.columns and 'current_min_price' not in df.columns:
+        df = df.rename(columns={'price': 'current_min_price'})
+
+    if 'logged_at' in df.columns:
+        df['logged_at'] = pd.to_datetime(df['logged_at'])
+        df.set_index('logged_at', inplace=True)
+
+    
     # 2. 1차 이상치 전처리
     raw_window = 432  # 약 3일치 (10분 : 6 * 24 * 3)
     raw_sigma = 7

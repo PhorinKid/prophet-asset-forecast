@@ -34,13 +34,50 @@ class ModelFactory:
         
         # 1. LightGBM
         print("LightGBM 학습 중")
-        self.lgbm = LGBMRegressor(n_estimators=1000, learning_rate=0.01, verbose=-1, random_state=42)
+        # self.lgbm = LGBMRegressor(n_estimators=1000, learning_rate=0.01, verbose=-1, random_state=42)
+        # self.lgbm = LGBMRegressor(
+        #     n_estimators=1500,
+        #     learning_rate=0.05,
+        #     num_leaves=63,
+        #     min_child_samples=5,
+        #     random_state=42,
+        #     verbose=-1
+        # )
+        # self.lgbm.fit(X, y)
+        self.lgbm = LGBMRegressor(
+            n_estimators=2000,
+            learning_rate=0.01,
+            max_depth=5,
+            num_leaves=31,
+            random_state=42,
+            n_jobs=-1,
+            # force_col_wise=True, # 경고가 뜨면 켜주세요
+            verbose=-1
+        )
         self.lgbm.fit(X, y)
         
         # 2. XGBoost
         print("XGBoost 학습 중")
-        self.xgb = XGBRegressor(n_estimators=1000, learning_rate=0.01, random_state=42)
-        self.xgb.fit(X, y)
+        # self.xgb = XGBRegressor(n_estimators=1000, learning_rate=0.01, random_state=42)
+        # self.xgb = XGBRegressor(
+        #     n_estimators=1500,
+        #     learning_rate=0.05,
+        #     max_depth=9,              # 나무를 더 깊게 심어서 세부 변동 학습
+        #     min_child_weight=1,       # 작은 변화에도 민감하게 반응
+        #     gamma=0.1,                # 너무 직선이 되지 않도록 약간의 유연성 부여
+        #     random_state=42
+        # )
+        # self.xgb.fit(X, y)
+        self.xgb = XGBRegressor(
+            n_estimators=2000,
+            learning_rate=0.01,
+            max_depth=6,
+            subsample=0.8,
+            colsample_bytree=0.8,
+            random_state=42,
+            n_jobs=-1
+        )
+        self.xgb.fit(X, y, verbose=False)
         
         # 3. NeuralProphet (딥러닝)
         print("NeuralProphet 학습 중")
@@ -49,20 +86,39 @@ class ModelFactory:
         df_np['ds'] = pd.to_datetime(df_np['ds'])
         
         set_random_seed(42)
+        # self.np_model = NeuralProphet(
+        #     n_forecasts=144,
+        #     n_lags=240,
+        #     learning_rate=0.01,
+        #     epochs=150,
+        #     weekly_seasonality=True,
+        #     daily_seasonality=True,
+        #     yearly_seasonality=False,
+        #     batch_size=64,
+        #     growth='off',
+        #     trainer_config={
+        #         "enable_checkpointing": False,
+        #         "logger": False,
+        #         "enable_progress_bar": False
+        #     }
+        # )
         self.np_model = NeuralProphet(
-            n_forecasts=1,
-            n_lags=24,
+            n_forecasts=144,
+            n_lags=240,
+            weekly_seasonality=True,
+            daily_seasonality=True,
+            yearly_seasonality=False,
             learning_rate=0.01,
-            epochs=100,
             batch_size=64,
+            growth='off',
             trainer_config={
-                "enable_checkpointing": False,  # 체크포인트 저장 안 함
-                "logger": False,                # 로그 파일 생성 안 함
-                "enable_progress_bar": False    # 진행바 끄기 (EC2 로그 깔끔하게)
-            }
+                    "enable_checkpointing": False,
+                    "logger": False,
+                    "enable_progress_bar": False
+                }
         )
         self.np_model.add_future_regressor("GPT_Score")
-        self.np_model.fit(df_np, freq="30min", progress=None)
+        self.np_model.fit(df_np, freq="30min", progress=None, num_workers=0)
 
         if os.path.exists("lightning_logs"):
             shutil.rmtree("lightning_logs")
@@ -120,7 +176,7 @@ class ModelFactory:
         p_np = forecast['yhat1'].iloc[-1]
         
         # 3. 앙상블 (55 : 35 : 10)
-        final_price = (p_lgbm * 0.55) + (p_xgb * 0.35) + (p_np * 0.10)
+        final_price = (p_lgbm * 0.55) + (p_xgb * 0.10) + (p_np * 0.35)
         
         return int(final_price), p_lgbm, p_xgb, p_np
     
@@ -187,19 +243,22 @@ class ModelFactory:
             preds_np = np.concatenate([preds_np, padding])
         
         # B. ML 모델(LGBM, XGB) 미래 예측
-        future_ml = pd.DataFrame(index=future_index)
-        future_ml['Hour'] = future_ml.index.hour
-        future_ml['DayOfWeek'] = future_ml.index.dayofweek
+        # future_ml = pd.DataFrame(index=future_index)
+        # future_ml['Hour'] = future_ml.index.hour
+        # future_ml['DayOfWeek'] = future_ml.index.dayofweek
 
-        for col in ['MA_5', 'MA_48', 'Std_20', 'RSI', 'Close_Lag1', 'Close_Lag2']:
-            future_ml[col] = df_ml[col].iloc[-1]
-        future_ml['GPT_Lag1'] = future_reg_values
+        # for col in ['MA_5', 'MA_48', 'Std_20', 'RSI', 'Close_Lag1', 'Close_Lag2']:
+        #     future_ml[col] = df_ml[col].iloc[-1]
+        # future_ml['GPT_Lag1'] = future_reg_values
 
-        preds_lgbm = self.lgbm.predict(future_ml[FEATURES])
-        preds_xgb = self.xgb.predict(future_ml[FEATURES])
+        # preds_lgbm = self.lgbm.predict(future_ml[FEATURES])
+        # preds_xgb = self.xgb.predict(future_ml[FEATURES])
+
+        preds_lgbm = self._recursive_predict(self.lgbm, df_ml, steps=144)
+        preds_xgb = self._recursive_predict(self.xgb, df_ml, steps=144)
         
         # C. 3대장 앙상블
-        final_forecast = (preds_lgbm * 0.55) + (preds_xgb * 0.35) + (preds_np * 0.10)
+        final_forecast = (preds_lgbm * 0.65) + (preds_xgb * 0.15) + (preds_np * 0.20)
         
         # 결과 정리
         result_df = pd.DataFrame({
@@ -212,4 +271,63 @@ class ModelFactory:
         print("미래 3일 예측 완료\n")
         
         return result_df
+    
+    # ---------------------------------------------------------
+    # 6. 재귀적 예측 헬퍼 함수
+    # ---------------------------------------------------------
+    def _recursive_predict(self, model, df_initial, steps=144):
+        future_preds = []
+        
+        # 1. 초기 히스토리 설정 (최근 100개 데이터 확보)
+        # 롤링 윈도우 계산을 위해 충분한 데이터가 필요합니다.
+        history_prices = df_initial['Close'].iloc[-200:].tolist()
+        
+        # 2. 마지막 시점 데이터 준비
+        last_row = df_initial.iloc[[-1]].copy()
+        current_time = last_row.index[0]
+        
+        # 3. 한 스텝씩 미래로 전진
+        for i in range(steps):
+            # A. 모델 예측 (현재 상태로 다음 30분 예측)
+            pred_price = model.predict(last_row[FEATURES])[0]
+            future_preds.append(pred_price)
+            
+            # B. 시간 전진
+            next_time = current_time + pd.Timedelta(minutes=30)
+            
+            # C. 히스토리 업데이트 (예측값을 실제 값처럼 추가)
+            history_prices.append(pred_price)
+            if len(history_prices) > 200: history_prices.pop(0) # 메모리 관리
+            
+            # D. 기술적 지표(Feature) 재계산 (핵심!)
+            s_history = pd.Series(history_prices)
+            
+            last_row['MA_5'] = s_history.rolling(5).mean().iloc[-1]
+            last_row['MA_48'] = s_history.rolling(48).mean().iloc[-1]
+            last_row['Std_20'] = s_history.rolling(20).std().iloc[-1]
+            
+            delta = s_history.diff()
+            # gain/loss 계산 시 0으로 나누기 방지 등 안전장치 필요하나 단순화
+            gain = (delta.where(delta > 0, 0)).rolling(14).mean().iloc[-1]
+            loss = (-delta.where(delta < 0, 0)).rolling(14).mean().iloc[-1]
+            
+            if loss == 0: 
+                last_row['RSI'] = 100
+            else:
+                last_row['RSI'] = 100 - (100 / (1 + (gain / loss)))
+            
+            # E. Lag 변수 업데이트 (밀어내기)
+            last_row['Close_Lag2'] = last_row['Close_Lag1']
+            last_row['Close_Lag1'] = pred_price # 방금 예측한 값을 Lag1로 사용
+            
+            # F. 시간 변수 업데이트
+            last_row['Hour'] = next_time.hour
+            last_row['DayOfWeek'] = next_time.dayofweek
+            
+            # GPT 점수는 미래 값을 알 수 없으므로 0 혹은 유지 (여기선 0으로 가정)
+            last_row['GPT_Lag1'] = 0.0
+            
+            current_time = next_time
+            
+        return np.array(future_preds)
     
