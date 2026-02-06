@@ -158,27 +158,27 @@ class ModelFactory:
         else:
             raise FileNotFoundError(f"[ID : {item_id}]에 해당하는 모델 파일이 없습니다.\n")
 
-    # --------------------
-    # 4. 앙상블
-    # --------------------
-    def predict_ensemble(self, input_row, np_df):
-        """
-        [예측 서비스용] 3대장 앙상블 예측값을 반환합니다.
-        input_row: 머신러닝용 피처가 들어있는 DataFrame (1줄)
-        np_df: NeuralProphet용 히스토리 데이터
-        """
-        # 1. ML 예측
-        p_lgbm = self.lgbm.predict(input_row[FEATURES])[0]
-        p_xgb = self.xgb.predict(input_row[FEATURES])[0]
+    # # --------------------
+    # # 4. 앙상블
+    # # --------------------
+    # def predict_ensemble(self, input_row, np_df):
+    #     """
+    #     [예측 서비스용] 3대장 앙상블 예측값을 반환합니다.
+    #     input_row: 머신러닝용 피처가 들어있는 DataFrame (1줄)
+    #     np_df: NeuralProphet용 히스토리 데이터
+    #     """
+    #     # 1. ML 예측
+    #     p_lgbm = self.lgbm.predict(input_row[FEATURES])[0]
+    #     p_xgb = self.xgb.predict(input_row[FEATURES])[0]
         
-        # 2. NP 예측
-        forecast = self.np_model.predict(np_df)
-        p_np = forecast['yhat1'].iloc[-1]
+    #     # 2. NP 예측
+    #     forecast = self.np_model.predict(np_df)
+    #     p_np = forecast['yhat1'].iloc[-1]
         
-        # 3. 앙상블 (55 : 35 : 10)
-        final_price = (p_lgbm * 0.55) + (p_xgb * 0.10) + (p_np * 0.35)
+    #     # 3. 앙상블 (55 : 35 : 10)
+    #     final_price = (p_lgbm * 0.55) + (p_xgb * 0.10) + (p_np * 0.35)
         
-        return int(final_price), p_lgbm, p_xgb, p_np
+    #     return int(final_price), p_lgbm, p_xgb, p_np
     
     # --------------------
     # 5. 3일 예측
@@ -258,7 +258,7 @@ class ModelFactory:
         preds_xgb = self._recursive_predict(self.xgb, df_ml, steps=144)
         
         # C. 3대장 앙상블
-        final_forecast = (preds_lgbm * 0.65) + (preds_xgb * 0.15) + (preds_np * 0.20)
+        final_forecast = (preds_lgbm * 0.55) + (preds_xgb * 0.15) + (preds_np * 0.30)
         
         # 결과 정리
         result_df = pd.DataFrame({
@@ -266,7 +266,7 @@ class ModelFactory:
             'forecast': final_forecast.astype(int),
             'lgbm': preds_lgbm,
             'xgb': preds_xgb,
-            'np': preds_np
+            'nural_prophet': preds_np
         })
         print("미래 3일 예측 완료\n")
         
@@ -311,7 +311,7 @@ class ModelFactory:
             gain = (delta.where(delta > 0, 0)).rolling(14).mean().iloc[-1]
             loss = (-delta.where(delta < 0, 0)).rolling(14).mean().iloc[-1]
             
-            if loss == 0: 
+            if loss == 0:
                 last_row['RSI'] = 100
             else:
                 last_row['RSI'] = 100 - (100 / (1 + (gain / loss)))

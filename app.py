@@ -9,6 +9,7 @@ import os
 from src.db import load_data, load_merged_data
 from src.processing import preprocess_data
 from src.models import ModelFactory
+from src.ai_advisor import get_ai_advice
 
 # -------------------------------------------------------------------------
 # 호환용 상수 설정
@@ -27,6 +28,9 @@ st.set_page_config(
 # 세션 초기화
 if "item_results" not in st.session_state:
     st.session_state.item_results = {}
+
+if "ai_advice_cache" not in st.session_state:
+    st.session_state.ai_advice_cache = {}
 
 if "forecast_result" not in st.session_state:
     st.session_state.forecast_result = None
@@ -177,8 +181,8 @@ if st.session_state.forecast_result:
     past_df['Opacity'] = 1.0
     past_df['StrokeWidth'] = 1
 
-    future_melted = forecast.melt(id_vars=['ds'], value_vars=['forecast', 'lgbm', 'xgb', 'np'], var_name='Model', value_name='Price')
-    future_melted['Opacity'] = future_melted['Model'].apply(lambda x: 1.0 if x == 'forecast' else 0.5)
+    future_melted = forecast.melt(id_vars=['ds'], value_vars=['forecast', 'lgbm', 'xgb', 'nural_prophet'], var_name='Model', value_name='Price')
+    future_melted['Opacity'] = future_melted['Model'].apply(lambda x: 1.0 if x == 'forecast' else 0.7)
     future_melted['StrokeWidth'] = future_melted['Model'].apply(lambda x: 1.2 if x == 'forecast' else 1)
 
     full_df = pd.concat([past_df, future_melted], ignore_index=True)
@@ -189,39 +193,86 @@ if st.session_state.forecast_result:
 
     # "최근 예측 기간" 슬라이더 값만큼 과거를 보여줍니다.
     view_start = last_predict_date - pd.Timedelta(days=days_to_show)
-    view_end = last_predict_date + pd.Timedelta(hours=0)
+    view_end = last_predict_date + pd.Timedelta(hours=0.2)
 
     st.markdown(f"### {item_name} 모델별 상세 예측 트렌드")
 
-    y_min = int(full_df['Price'].min() * 0.98)
-    y_max = int(full_df['Price'].max() * 1.02)
+    y_min_val = int(full_df['Price'].min() * 0.95)
+    y_max_val = int(full_df['Price'].max() * 1.05)
+    margin = (y_max_val - y_min_val) * 0.1
+
+    y_min = int(y_min_val - margin)
+    y_max = int(y_max_val + margin)
+
+    if y_min < 0: y_min = 0
 
     lines = alt.Chart(full_df).mark_line().encode(
         x=alt.X('ds:T', title='날짜 및 시간',
                 axis=alt.Axis(format='%m/%d %H:%M', tickCount=8),
                 scale=alt.Scale(domain=[view_start, view_end])),
-        y=alt.Y('Price:Q', title='가격 (Gold)', scale=alt.Scale(domain=[y_min, y_max])),
+        y=alt.Y('Price:Q', title='가격 (Gold)',
+                scale=alt.Scale(domain=[y_min, y_max], zero=False)),
         color=alt.Color('Model:N', scale=alt.Scale(
-            domain=['Actual', 'forecast', 'lgbm', 'xgb', 'np'],
+            domain=['Actual', 'forecast', 'lgbm', 'xgb', 'nural_prophet'],
             range=['#808080', '#FF4B4B', '#1C83E1', '#00C781', '#FFAA00']
         ), title="모델 구분"),
         opacity=alt.Opacity('Opacity:Q', legend=None),
         strokeWidth=alt.StrokeWidth('StrokeWidth:Q', legend=None),
         tooltip=['ds:T', 'Model:N', 'Price:Q']
-    ).interactive()
+    ).interactive(bind_y=False)
 
     # 수요일 가이드라인
     wednesdays = pd.date_range(start=full_df['ds'].min(), end=full_df['ds'].max(), freq='W-WED').normalize() + pd.Timedelta(hours=6)
     rules = alt.Chart(pd.DataFrame({'ds': wednesdays})).mark_rule(color='gold', strokeDash=[5, 5]).encode(x='ds:T')
 
-    # 지표 표시
-    future_p = int(forecast['forecast'].iloc[-1])
-    diff = future_p - curr_p
-    diff_percent = (diff / curr_p) * 100
+    # [AI 투자 조언 및 핵심 지표]
+    
+    # 1. UI 표시용 통계 계산 (화면 장식용 팩트)
+    future_vals = forecast['forecast'].values
+    min_pred = int(np.min(future_vals))
+    max_pred = int(np.max(future_vals))
+    
+    # 2. GPT 분석 호출 (딕셔너리 캐싱 방식)
+    # "내 서랍장에 이 아이템의 분석 결과가 없는 경우"에만 실행
+    if item_name not in st.session_state.ai_advice_cache:
+        with st.spinner(f"🤖 AI가 '{item_name}'의 차트를 분석 중입니다..."):
+            # GPT 호출
+            advice_text = get_ai_advice(item_name, curr_p, forecast)
+            # [저장] 서랍장에 아이템 이름을 꼬리표(Key)로 붙여서 저장
+            st.session_state.ai_advice_cache[item_name] = advice_text
+    
+    # 3. AI 조언 출력 (서랍장에서 꺼내서 보여줌)
+    # 이제 분석한 적 있는 아이템은 0.1초 만에 바로 뜹니다.
+    cached_advice = st.session_state.ai_advice_cache[item_name]
+    
+    st.markdown("### 🤖 AI 투자 전략 가이드")
+    st.info(cached_advice, icon="📊")
+
+    # 4. 3단 핵심 지표 (시각적 요약)
+    st.markdown("---")
     m1, m2, m3 = st.columns(3)
+    
+    # 현재가
     m1.metric("현재 시세", f"{curr_p:,.0f} G")
-    m2.metric("3일 뒤 예상", f"{future_p:,.0f} G", delta=f"{diff:,.0f} G ({diff_percent:.1f}%)")
-    m3.metric("기간 설정", f"{days_to_show}일 보기", help="사이드바 슬라이더로 조절 가능")
+    
+    # 예측 최저 (매수 기회)
+    diff_min = min_pred - curr_p
+    m2.metric(
+        "📉 예측 최저점",
+        f"{min_pred:,.0f} G",
+        delta=f"{diff_min:,.0f} G",
+        delta_color="inverse" # 낮을수록 초록색(이득) 표시
+    )
+    
+    # 예측 최고 (매도 기회)
+    diff_max = max_pred - curr_p
+    m3.metric(
+        "📈 예측 최고점",
+        f"{max_pred:,.0f} G",
+        delta=f"{diff_max:,.0f} G"
+    )
+    
+    st.caption(f"※ 위 지표는 AI 분석의 기초가 되는 팩트 데이터(3일간 예측 범위)입니다.")
 
     # 그래프 표시
     st.altair_chart((lines + rules), use_container_width=True)
