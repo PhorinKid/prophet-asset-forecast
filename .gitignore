@@ -1,30 +1,37 @@
-# 1. 보안 파일 (절대 올리면 안 됨!)
+# 1. 보안 파일
 config.py
 secrets.json
 .env
 api_keys.py
 
-# 2. 파이썬 불필요 파일
+# 2. 파이썬 가상환경 및 캐시
+venv/
+.venv/
 __pycache__/
 *.pyc
 
-# 3. 로그 파일
+# 3. 로그 및 학습 부산물
 *.log
+catboost_info/
+lightning_logs/
+wandb/
 
-# 4. 데이터 파일 (DB 접속 정보가 있거나 너무 큰 파일)
+# 4. 데이터 파일
+data/
 *.csv
 *.xlsx
+*.db
+*.sqlite3
 
-# 5. 시스템/에디터 설정 파일
+# 5. 시스템/에디터 설정
 .vscode/
 .idea/
 .DS_Store
 
-# 빌드된 자바 파일 무시
+# 6. 자바 빌드 파일
 *.jar
 *.class
 
-catboost_info/
-lightning_logs/
-*.pkl
+# 7. 모델 파일 (중요!)
 models/
+*.pkl

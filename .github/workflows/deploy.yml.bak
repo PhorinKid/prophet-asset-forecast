@@ -1,0 +1,65 @@
+name: Docker CI/CD Deploy
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Docker Hub 로그인
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: 이미지 빌드 및 업로드
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/prophet-asset-forecast:latest
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: AWS EC2 접속 및 배포
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_KEY }}
+          port: 22
+          script: |
+            # 1. 기존 파이썬 컨테이너 정리
+            sudo docker stop lostark-web || true
+            sudo docker rm lostark-web || true
+            
+            # 2. 강력한 대청소 (용량 확보)
+            sudo docker system prune -a -f
+            
+            # 3. 최신 이미지 다운로드
+            sudo docker pull ${{ secrets.DOCKERHUB_USERNAME }}/prophet-asset-forecast:latest
+            
+            # 4. .env 파일 생성 (시크릿의 모든 변수 주입)
+            echo "DB_HOST=${{ secrets.DB_HOST }}" > .env
+            echo "DB_PORT=${{ secrets.DB_PORT }}" >> .env
+            echo "DB_USER=${{ secrets.DB_USER }}" >> .env
+            echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
+            echo "DB_NAME=${{ secrets.DB_NAME }}" >> .env
+            echo "LOSTARK_API_TOKEN=${{ secrets.LOSTARK_API_TOKEN }}" >> .env
+            echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> .env
+            echo "TARGET_CATEGORIES=${{ secrets.TARGET_CATEGORIES }}" >> .env
+            
+            # 5. 실행 (환경변수 파일 사용)
+            sudo docker run -d \
+              --name lostark-web \
+              -p 8501:8501 \
+              --env-file .env \
+              ${{ secrets.DOCKERHUB_USERNAME }}/prophet-asset-forecast:latest
+              
