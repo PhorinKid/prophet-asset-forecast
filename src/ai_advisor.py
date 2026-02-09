@@ -27,7 +27,7 @@ def get_ai_advice(item_name, current_price, df_forecast):
         idx_max = df_forecast['forecast'].idxmax()
         max_val = int(df_forecast.loc[idx_max, 'forecast'])
         max_time_exact = df_forecast.loc[idx_max, 'ds'].strftime("%m/%d %H:%M")
-        
+
         # 최저점 (Min) 계산
         idx_min = df_forecast['forecast'].idxmin()
         min_val = int(df_forecast.loc[idx_min, 'forecast'])
@@ -82,4 +82,3 @@ def get_ai_advice(item_name, current_price, df_forecast):
 
     except Exception as e:
         return f"🤖 AI 분석 실패: {str(e)}"
-    

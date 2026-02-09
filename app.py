@@ -149,7 +149,7 @@ if st.session_state.forecast_result:
     past_df['Opacity'] = 1.0
     past_df['StrokeWidth'] = 1
 
-    future_melted = forecast.melt(id_vars=['ds'], value_vars=['forecast', 'lgbm', 'xgb', 'nural_prophet'], var_name='Model', value_name='Price')
+    future_melted = forecast.melt(id_vars=['ds'], value_vars=['forecast', 'lgbm', 'xgb', 'neuralprophet'], var_name='Model', value_name='Price')
     future_melted['Opacity'] = future_melted['Model'].apply(lambda x: 1.0 if x == 'forecast' else 0.7)
     future_melted['StrokeWidth'] = future_melted['Model'].apply(lambda x: 1.2 if x == 'forecast' else 1)
 
@@ -186,7 +186,7 @@ if st.session_state.forecast_result:
         y=alt.Y('Price:Q', title='가격 (Gold)',
                 scale=alt.Scale(domain=[y_min, y_max], zero=False)),
         color=alt.Color('Model:N', scale=alt.Scale(
-            domain=['Actual', 'forecast', 'lgbm', 'xgb', 'nural_prophet'],
+            domain=['Actual', 'forecast', 'lgbm', 'xgb', 'neuralprophet'],
             range=['#808080', '#FF4B4B', '#1C83E1', '#00C781', '#FFAA00']
         ), title="모델"),
         opacity=alt.Opacity('Opacity:Q', legend=None),
@@ -194,8 +194,12 @@ if st.session_state.forecast_result:
         tooltip=['ds:T', 'Model:N', 'Price:Q']
     ).interactive(bind_y=False)
 
-    wednesdays = pd.date_range(start=view_start, end=view_end, freq='W-WED').normalize() + pd.Timedelta(hours=6)
-    rules = alt.Chart(pd.DataFrame({'ds': wednesdays})).mark_rule(color='gold', strokeDash=[5, 5]).encode(x='ds:T')
+    data_start = full_df['ds'].min()
+    data_end = full_df['ds'].max()
+    wednesdays = pd.date_range(start=data_start, end=data_end, freq='W-WED').normalize() + pd.Timedelta(hours=6)
+    rules = alt.Chart(pd.DataFrame({'ds': wednesdays})).mark_rule(color='gold', strokeDash=[5, 5]).encode(
+        x='ds:T'
+    )
 
     # 5. AI 가이드 (캐싱 적용)
     future_vals = forecast['forecast'].values

@@ -2,9 +2,7 @@ import pandas as pd
 import numpy as np
 
 def clean_outliers_rolling(df, column='Close', window=48, sigma=4):
-    """
-    이동 평균 기반 이상치 제거 및 보간 (Rolling Z-score)
-    """
+
     df_clean = df.copy()
     rolling_mean = df_clean[column].rolling(window=window, center=True).mean()
     rolling_std = df_clean[column].rolling(window=window, center=True).std()
@@ -41,13 +39,13 @@ def preprocess_data(df_prices, df_notices):
     # 2. 1차 이상치 제거 (Raw Data, 약 3일 윈도우)
     raw_window = 432
     raw_sigma = 7
-    
+
     r_mean = df['current_min_price'].rolling(window=raw_window, center=True).mean()
     r_std = df['current_min_price'].rolling(window=raw_window, center=True).std()
-    
+
     upper = r_mean + (raw_sigma * r_std)
     lower = r_mean - (raw_sigma * r_std)
-    
+
     mask = (df['current_min_price'] > upper) | (df['current_min_price'] < lower)
     if mask.sum() > 0:
         df.loc[mask, 'current_min_price'] = np.nan

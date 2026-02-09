@@ -151,7 +151,7 @@ class ModelFactory:
             'forecast': final_forecast.astype(int),
             'lgbm': preds_lgbm,
             'xgb': preds_xgb,
-            'nural_prophet': preds_np
+            'neuralprophet': preds_np
         })
         
         return result_df
