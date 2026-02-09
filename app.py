@@ -49,7 +49,7 @@ with st.sidebar:
     df_meta = df_meta.sort_values(by=['name', 'grade'])
 
     unique_names = df_meta['name'].unique()
-    default_target = "운명의 파괴석"
+    default_target = "유물 원한 각인서"
     
     default_index = list(unique_names).index(default_target) if default_target in unique_names else 0
 

@@ -144,7 +144,7 @@ class ModelFactory:
         preds_xgb = self._recursive_predict(self.xgb, df_ml, steps=144)
         
         # Ensemble (Weight: LGBM 55%, XGB 15%, NP 30%)
-        final_forecast = (preds_lgbm * 0.55) + (preds_xgb * 0.15) + (preds_np * 0.30)
+        final_forecast = (preds_lgbm * 0.4) + (preds_xgb * 0.4) + (preds_np * 0.2)
         
         result_df = pd.DataFrame({
             'ds': future_index,
@@ -170,7 +170,7 @@ class ModelFactory:
             next_time = current_time + pd.Timedelta(minutes=30)
             
             history_prices.append(pred_price)
-            if len(history_prices) > 200: 
+            if len(history_prices) > 200:
                 history_prices.pop(0)
             
             s_history = pd.Series(history_prices)
