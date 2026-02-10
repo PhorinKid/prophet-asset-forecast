@@ -20,10 +20,8 @@ def get_db_engine():
         "password": os.getenv("DB_PASSWORD"),
         "db": os.getenv("DB_NAME", "projectl")
     }
-    
     # DB URL 생성
     url = f"mysql+pymysql://{db_config['user']}:{db_config['password']}@{db_config['host']}:{db_config['port']}/{db_config['db']}"
-    
     return create_engine(url)
 
 # --------------------
@@ -63,7 +61,6 @@ def load_data(item_name, item_grade):
                 ORDER BY r.notice_date ASC
             """)
             df_notices = pd.read_sql(notice_sql, conn, params={"item_id": item_id})
-
             return df_prices, df_notices, item_id
             
     except Exception as e:
@@ -78,7 +75,6 @@ def load_merged_data():
     검색 사이드바 구성을 위한 아이템 이름 및 등급 목록을 가져옵니다.
     """
     engine = get_db_engine()
-    
     try:
         with engine.connect() as conn:
             sql = text("SELECT DISTINCT name, grade FROM market_items ORDER BY name, grade")
